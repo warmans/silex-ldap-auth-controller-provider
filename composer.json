@@ -1,4 +1,7 @@
 {
+    "name": "warmans/silex-ldap-auth-controller-provider",
+    "type": "library",
+    "description": "LDAP auth controller provider for silex",
     "require": {
         "php": ">=5.3.0",
         "ext-ldap": "*",
