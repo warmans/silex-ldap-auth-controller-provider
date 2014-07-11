@@ -59,7 +59,7 @@ class LdapAuthControllerProvider implements ControllerProviderInterface
                         return $app->redirect('/');
                     }
                 } catch (LdapException $e) {
-                    $view_params['error'] = 'Login Failed. The reason provided was: '.$e->getMessage();
+                    $view_params['error'] = 'Login Failed with error code '.$e->getcode();
                 }
             }
             return $app['view']->render($app['auth.template.login'] ?: 'login', $view_params);
