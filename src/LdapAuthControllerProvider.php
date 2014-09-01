@@ -4,6 +4,7 @@ namespace SilexProvider;
 use Silex\Application;
 use Silex\ControllerProviderInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Zend\Ldap\Exception\LdapException;
 
 class LdapAuthControllerProvider implements ControllerProviderInterface
@@ -26,7 +27,7 @@ class LdapAuthControllerProvider implements ControllerProviderInterface
             function (Request $request) use ($app) {
 
                 //user is not logged in go to login
-                if (null === $app['session']->get('user') && $request->get("_route") != 'login') {
+                if (null === $app['session']->get('user') && $request->get("_route") !== 'login' && $request->get("_route") !== '_auth_keepalive') {
                     $app['session']->set('user_target', $request->getUri());
                     return $app->redirect('/auth/login');
                 }
@@ -41,36 +42,49 @@ class LdapAuthControllerProvider implements ControllerProviderInterface
             }
         );
 
-        $controllers->match('/login', function (Request $request) use ($app) {
+        $controllers->match(
+            '/login',
+            function (Request $request) use ($app) {
+                $view_params = array('error'=>null);
 
-            $view_params = array('error'=>null);
+                //handle login where appropriate
+                if ($request->get('user') && $request->get('password')) {
 
-            //handle login where appropriate
-            if ($request->get('user') && $request->get('password')) {
+                    try {
+                        //throws exception
+                        $app['auth.ldap']->bind($request->get('user'), $request->get('password'));
+                        $app['session']->set('user', array('username' => $request->get('user')));
 
-                try {
-                    //throws exception
-                    $app['auth.ldap']->bind($request->get('user'), $request->get('password'));
-                    $app['session']->set('user', array('username' => $request->get('user')));
-
-                    if ($user_target = $app['session']->get('user_target')) {
-                        return $app->redirect($user_target);
-                    } else {
-                        return $app->redirect('/');
+                        if ($user_target = $app['session']->get('user_target')) {
+                            return $app->redirect($user_target);
+                        } else {
+                            return $app->redirect('/');
+                        }
+                    } catch (LdapException $e) {
+                        $view_params['error'] = 'Login Failed with error code '.$e->getcode();
                     }
-                } catch (LdapException $e) {
-                    $view_params['error'] = 'Login Failed with error code '.$e->getcode();
                 }
-            }
-            return $app['view']->render($app['auth.template.login'] ?: 'login', $view_params);
+                return $app['view']->render($app['auth.template.login'] ?: 'login', $view_params);
 
-        })->bind('login');
+            }
+        )->bind('login');
 
         $controllers->match(
             '/logout',
             function (Request $request) use ($app) {
                 $app['session']->set('user', null);
                 return $app->redirect('/');
+            }
+        );
+
+        $controllers->match(
+            '/keepalive',
+            function() use ($app) {
+                if ($app['session']->get('user')) {
+                    return new Response('', 204);
+                }
+                return new Response('Expired', 403);
+
             }
         );
 
