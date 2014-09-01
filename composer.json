@@ -5,7 +5,7 @@
     "require": {
         "php": ">=5.3.0",
         "ext-ldap": "*",
-        "silex/silex": "1.0.*@dev",
+        "silex/silex": "1.*",
         "litek/silex-php-engine": "dev-master",
         "zendframework/zend-ldap": "2.3.1"
     },
